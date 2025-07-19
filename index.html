@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Email Copy Tool Firebase Demo</title>
+<title>Email Copy Tool Firebase Online</title>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <style>
@@ -16,15 +16,19 @@ button:hover { background: #0056b3; }
 </style>
 </head>
 <body>
+
 <textarea id="emailListInput" placeholder="Dán danh sách email mới, mỗi email 1 dòng..."></textarea>
 <button id="updateListButton">Cập nhật danh sách online</button>
+
 <div class="input-container">
 <input type="text" id="emailOutput" placeholder="Email sẽ xuất hiện ở đây" readonly>
 <button id="manualCopyButton">📋</button>
 </div>
 <button id="copyButton">Xuất và Copy Email</button>
+
 <p id="count"></p>
 <p id="output"></p>
+
 <script>
 const firebaseConfig = {
     apiKey: "AIzaSyAht0R0-KXnWZuE5dLqz0HoO5Zctyd5ej8",
@@ -39,25 +43,29 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const emailRef = db.ref('emails');
 let emailList = [];
+
 function updateCount() {
     document.getElementById('count').textContent = `Số email còn lại: ${emailList.length}`;
 }
+
 emailRef.on('value', snapshot => {
     const data = snapshot.val();
     emailList = data ? data : [];
     updateCount();
 });
+
 document.getElementById('updateListButton').addEventListener('click', () => {
     const input = document.getElementById('emailListInput').value.trim();
     if (!input) {
         document.getElementById('output').textContent = 'Vui lòng dán danh sách email.';
         return;
     }
-    emailList = input.split('\n').map(e => e.trim()).filter(e => e);
+    emailList = input.split('\\n').map(e => e.trim()).filter(e => e);
     emailRef.set(emailList);
     document.getElementById('output').textContent = `Đã lưu ${emailList.length} email online.`;
     updateCount();
 });
+
 document.getElementById('copyButton').addEventListener('click', () => {
     if (emailList.length === 0) {
         document.getElementById('output').textContent = 'Danh sách đã hết email.';
@@ -75,6 +83,7 @@ document.getElementById('copyButton').addEventListener('click', () => {
         document.getElementById('output').textContent = 'Không thể copy.';
     });
 });
+
 document.getElementById('manualCopyButton').addEventListener('click', () => {
     const email = document.getElementById('emailOutput').value;
     if (!email) {
@@ -87,6 +96,7 @@ document.getElementById('manualCopyButton').addEventListener('click', () => {
         document.getElementById('output').textContent = 'Không thể copy.';
     });
 });
+
 if (location.search.includes('auto=true')) {
     setTimeout(() => document.getElementById('copyButton').click(), 500);
 }
