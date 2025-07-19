@@ -19,8 +19,8 @@ button:hover { background: #0056b3; }
 
 <h3>📨 Quản lý danh sách Email Online</h3>
 
-<textarea id="emailListInput" placeholder="Dán danh sách email mới, mỗi email 1 dòng..."></textarea>
-<button id="updateListButton">Lưu Danh Sách Email Online</button>
+<textarea id="emailListInput" placeholder="Dán email cần thêm, mỗi email 1 dòng..."></textarea>
+<button id="addListButton">➕ Thêm Email Vào Danh Sách</button>
 
 <div class="input-container">
 <input type="text" id="emailOutput" placeholder="Email sẽ xuất hiện ở đây" readonly>
@@ -59,16 +59,22 @@ emailRef.on('value', snapshot => {
     updateCount();
 });
 
-// === Cập nhật danh sách online ===
-document.getElementById('updateListButton').addEventListener('click', () => {
+// === Thêm email mới vào danh sách hiện tại ===
+document.getElementById('addListButton').addEventListener('click', () => {
     const input = document.getElementById('emailListInput').value.trim();
     if (!input) {
         document.getElementById('output').textContent = '⚠️ Vui lòng dán danh sách email.';
         return;
     }
-    emailList = input.split(/\r?\n|\r|\u2028/).map(e => e.trim()).filter(e => e);
-    emailRef.set(emailList);
-    document.getElementById('output').textContent = `✅ Đã lưu ${emailList.length} email online.`;
+    const newEmails = input.split(/\r?\n|\r|\u2028/).map(e => e.trim()).filter(e => e && !emailList.includes(e));
+    if (newEmails.length === 0) {
+        document.getElementById('output').textContent = '⚠️ Không có email mới hoặc email đã tồn tại.';
+        return;
+    }
+    const updatedList = emailList.concat(newEmails);
+    emailRef.set(updatedList);
+    document.getElementById('output').textContent = `✅ Đã thêm ${newEmails.length} email mới vào danh sách.`;
+    document.getElementById('emailListInput').value = '';
     updateCount();
 });
 
