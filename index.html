@@ -121,25 +121,25 @@ function copyText(text) {
         navigator.clipboard.writeText(text).then(() => {
             document.getElementById('output').textContent = `✅ Đã copy: ${text}`;
         }).catch(() => {
-            fallbackCopyText(text);
+            fallbackCopy(text);
         });
     } else {
-        fallbackCopyText(text);
+        fallbackCopy(text);
     }
 }
 
-function fallbackCopyText(text) {
-    const tempInput = document.createElement('input');
-    document.body.appendChild(tempInput);
-    tempInput.value = text;
-    tempInput.select();
+function fallbackCopy(text) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
     try {
         document.execCommand('copy');
         document.getElementById('output').textContent = `✅ Đã copy (fallback): ${text}`;
     } catch {
         document.getElementById('output').textContent = '⚠️ Không thể copy.';
     }
-    document.body.removeChild(tempInput);
+    document.body.removeChild(textarea);
 }
 
 document.getElementById('copyButton').addEventListener('click', () => {
