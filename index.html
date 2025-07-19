@@ -64,12 +64,44 @@ function updateCount() {
     document.getElementById('count').textContent = `📊 Số email còn lại: ${emailList.length}`;
 }
 
+// Copy ổn định trên mọi trình duyệt
+function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+            document.getElementById('output').textContent = `✅ Đã copy: ${text}`;
+        }).catch(err => {
+            fallbackCopy(text);
+        });
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+        const successful = document.execCommand('copy');
+        document.getElementById('output').textContent = successful ? `✅ Đã copy: ${text}` : '⚠️ Không thể copy.';
+    } catch (err) {
+        document.getElementById('output').textContent = '⚠️ Lỗi khi copy.';
+    }
+    document.body.removeChild(textarea);
+}
+
+// Load danh sách mail
 emailRef.on('value', snapshot => {
     const data = snapshot.val();
     emailList = data ? data : [];
     updateCount();
 });
 
+// Thêm danh sách mail
 document.getElementById('addListButton').addEventListener('click', () => {
     const input = document.getElementById('emailListInput').value.trim();
     if (!input) {
@@ -95,7 +127,8 @@ document.getElementById('addListButton').addEventListener('click', () => {
         } else if (!committed) {
             document.getElementById('output').textContent = '⚠️ Không thể thêm email.';
         } else {
-            const updatedCount = snapshot.val() ? snapshot.val().length : 0;
+            const updatedList = snapshot.val() ? snapshot.val() : [];
+            const updatedCount = updatedList.length;
             document.getElementById('output').textContent = `✅ Đã thêm ${newEmails.length} email, tổng cộng: ${updatedCount}.`;
             document.getElementById('emailListInput').value = '';
             updateCount();
@@ -103,6 +136,7 @@ document.getElementById('addListButton').addEventListener('click', () => {
     });
 });
 
+// Xóa toàn bộ danh sách
 document.getElementById('deleteListButton').addEventListener('click', () => {
     if (!confirm("Bạn có chắc muốn xóa toàn bộ danh sách email?")) return;
     emailRef.set([], (error) => {
@@ -116,32 +150,17 @@ document.getElementById('deleteListButton').addEventListener('click', () => {
     });
 });
 
-function copyText(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(() => {
-            document.getElementById('output').textContent = `✅ Đã copy: ${text}`;
-        }).catch(() => {
-            fallbackCopy(text);
-        });
-    } else {
-        fallbackCopy(text);
+// Copy thủ công
+document.getElementById('manualCopyButton').addEventListener('click', () => {
+    const email = document.getElementById('emailOutput').value;
+    if (!email) {
+        document.getElementById('output').textContent = '⚠️ Không có email để copy.';
+        return;
     }
-}
+    copyText(email);
+});
 
-function fallbackCopy(text) {
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    document.body.appendChild(textarea);
-    textarea.select();
-    try {
-        document.execCommand('copy');
-        document.getElementById('output').textContent = `✅ Đã copy (fallback): ${text}`;
-    } catch {
-        document.getElementById('output').textContent = '⚠️ Không thể copy.';
-    }
-    document.body.removeChild(textarea);
-}
-
+// Lấy & Copy 1 email + xóa
 document.getElementById('copyButton').addEventListener('click', () => {
     if (emailList.length === 0) {
         document.getElementById('output').textContent = '✅ Danh sách đã hết email.';
@@ -149,6 +168,11 @@ document.getElementById('copyButton').addEventListener('click', () => {
     }
     const randomIndex = Math.floor(Math.random() * emailList.length);
     const email = emailList[randomIndex];
+
+    // Copy trước
+    copyText(email);
+
+    // Xóa khỏi danh sách
     emailRef.transaction(currentList => {
         if (!currentList) return null;
         currentList.splice(randomIndex, 1);
@@ -158,20 +182,10 @@ document.getElementById('copyButton').addEventListener('click', () => {
             document.getElementById('output').textContent = '⚠️ Lỗi khi xóa email.';
         } else if (committed) {
             document.getElementById('emailOutput').value = email;
-            copyText(email);
             emailList = snapshot.val() || [];
             updateCount();
         }
     });
-});
-
-document.getElementById('manualCopyButton').addEventListener('click', () => {
-    const email = document.getElementById('emailOutput').value;
-    if (!email) {
-        document.getElementById('output').textContent = '⚠️ Không có email để copy.';
-        return;
-    }
-    copyText(email);
 });
 </script>
 </body>
