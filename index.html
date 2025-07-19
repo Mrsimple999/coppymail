@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quản lý Email Online</title>
+<title>Quản lý Email + Mở TikTok</title>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <style>
@@ -28,7 +28,7 @@ button:hover { background: #0056b3; }
 </head>
 <body>
 
-<h3>📨 Quản lý danh sách Email Online</h3>
+<h3>📨 Quản lý Email Online + Mở TikTok</h3>
 
 <textarea id="emailListInput" placeholder="Dán email cần thêm, mỗi email 1 dòng..."></textarea>
 <button id="addListButton">➕ Thêm Email Vào Danh Sách</button>
@@ -42,10 +42,10 @@ button:hover { background: #0056b3; }
 <p id="count"></p>
 <p id="output"></p>
 
-<button id="copyButton">📋 Lấy & Copy Email</button>
+<button id="copyButton">📋 Lấy & Copy Email + Mở TikTok</button>
 
 <script>
-// === Firebase Config ===
+// === Firebase Config của bạn ===
 const firebaseConfig = {
   apiKey: "AIzaSyB9elXt44pt-DGYygIOWQog8XE-YqQO_I8",
   authDomain: "email-sync-tool.firebaseapp.com",
@@ -81,11 +81,13 @@ document.getElementById('addListButton').addEventListener('click', () => {
         document.getElementById('output').textContent = '⚠️ Không có email hợp lệ.';
         return;
     }
+    let addedCount = 0;
     emailRef.transaction(currentList => {
         const updatedList = currentList ? currentList.slice() : [];
         newEmails.forEach(email => {
-            if (!updatedList.includes(email)) {
+            if (email && !updatedList.includes(email)) {
                 updatedList.push(email);
+                addedCount++;
             }
         });
         return updatedList;
@@ -96,7 +98,11 @@ document.getElementById('addListButton').addEventListener('click', () => {
             document.getElementById('output').textContent = '⚠️ Không thể thêm email.';
         } else {
             const updatedCount = snapshot.val() ? snapshot.val().length : 0;
-            document.getElementById('output').textContent = `✅ Đã thêm ${newEmails.length} email, tổng cộng: ${updatedCount}.`;
+            if (addedCount === 0) {
+                document.getElementById('output').textContent = '⚠️ Không có email mới được thêm (trùng với danh sách cũ).';
+            } else {
+                document.getElementById('output').textContent = `✅ Đã thêm ${addedCount} email mới. Tổng: ${updatedCount}.`;
+            }
             document.getElementById('emailListInput').value = '';
             updateCount();
         }
@@ -142,6 +148,15 @@ function fallbackCopy(text) {
     document.body.removeChild(textarea);
 }
 
+// 🚀 Hàm mở TikTok
+function openTikTok() {
+    window.location.href = 'tiktok://';
+    setTimeout(() => {
+        window.location.href = 'https://www.tiktok.com/';
+    }, 1000);
+}
+
+// 🚀 Lấy & Copy Email + Mở TikTok
 document.getElementById('copyButton').addEventListener('click', () => {
     if (emailList.length === 0) {
         document.getElementById('output').textContent = '✅ Danh sách đã hết email.';
@@ -161,6 +176,9 @@ document.getElementById('copyButton').addEventListener('click', () => {
             copyText(email);
             emailList = snapshot.val() || [];
             updateCount();
+
+            // 🚀 Mở TikTok ngay sau khi copy
+            openTikTok();
         }
     });
 });
