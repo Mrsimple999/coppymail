@@ -66,7 +66,7 @@ document.getElementById('updateListButton').addEventListener('click', () => {
         document.getElementById('output').textContent = '⚠️ Vui lòng dán danh sách email.';
         return;
     }
-    emailList = input.split('\\n').map(e => e.trim()).filter(e => e);
+    emailList = input.split('\n').map(e => e.trim()).filter(e => e);
     emailRef.set(emailList);
     document.getElementById('output').textContent = `✅ Đã lưu ${emailList.length} email online.`;
     updateCount();
