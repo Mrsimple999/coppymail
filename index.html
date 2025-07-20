@@ -12,7 +12,7 @@ textarea, input, button { font-size: 16px; width: 90%; max-width: 340px; margin-
 button { background: #007bff; color: white; border: none; cursor: pointer; transition: background 0.3s; }
 button:hover { background: #0056b3; }
 .input-container { display: flex; gap: 10px; align-items: center; width: 90%; max-width: 340px; margin-top: 10px; }
-#manualCopyButton { max-width: 60px; padding: 10px; }
+#manualCopyButton, #copyFilteredButton { max-width: 60px; padding: 10px; }
 #deleteListButton { background: #dc3545; }
 #deleteListButton:hover { background: #a71d2a; }
 #copyButton { font-size: 20px; padding: 18px; width: 95%; max-width: 380px; margin-top: 30px; background: #28a745; }
@@ -32,8 +32,11 @@ button:hover { background: #0056b3; }
 <button id="manualCopyButton">📋</button>
 </div>
 
-<!-- ✅ Hiển thị chuỗi mail đã tách -->
-<textarea id="filteredEmailsOutput" placeholder="Mật khẩu hiển thị ở đây..." rows="1" readonly></textarea>
+<!-- ✅ Giao diện giống copy thủ công + nút copy -->
+<div class="input-container">
+<input type="text" id="filteredEmailsOutput" placeholder="Mật khẩu sẽ hiển thị ở đây..." readonly>
+<button id="copyFilteredButton">📋</button>
+</div>
 
 <p id="count"></p>
 <p id="output"></p>
@@ -108,13 +111,13 @@ emailRef.on('value', snapshot => {
     updateCount();
 });
 
-// Thêm email (tất cả mọi người đều có thể thêm)
+// Thêm email
 document.getElementById('addListButton').addEventListener('click', () => {
     const input = document.getElementById('emailListInput').value.trim();
     const filteredEmails = extractEmails(input);
 
-    // ✅ Hiển thị danh sách mail đã tách
-    document.getElementById('filteredEmailsOutput').value = filteredEmails.join("\n");
+    // Hiển thị chuỗi email đã tách vào input dạng 1 dòng, phân cách bằng dấu phẩy
+    document.getElementById('filteredEmailsOutput').value = filteredEmails.join(", ");
 
     if (filteredEmails.length === 0) {
         document.getElementById('output').textContent = '⚠️ Không có email hợp lệ để thêm.';
@@ -157,7 +160,7 @@ document.getElementById('deleteListButton').addEventListener('click', () => {
     });
 });
 
-// Copy thủ công
+// Copy thủ công email random đã xuất hiện
 document.getElementById('manualCopyButton').addEventListener('click', () => {
     const email = document.getElementById('emailOutput').value;
     if (!email) {
@@ -165,6 +168,16 @@ document.getElementById('manualCopyButton').addEventListener('click', () => {
         return;
     }
     copyText(email);
+});
+
+// Copy thủ công chuỗi email đã tách
+document.getElementById('copyFilteredButton').addEventListener('click', () => {
+    const text = document.getElementById('filteredEmailsOutput').value;
+    if (!text) {
+        document.getElementById('output').textContent = '⚠️ Không có chuỗi để copy.';
+        return;
+    }
+    copyText(text);
 });
 
 // Lấy & copy 1 email + xóa
