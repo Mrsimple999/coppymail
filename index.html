@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quản lý Email Online</title>
+<title>Quản lý Email Online - Auto Filter</title>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <style>
@@ -12,7 +12,7 @@ textarea, input, button { font-size: 16px; width: 90%; max-width: 340px; margin-
 button { background: #007bff; color: white; border: none; cursor: pointer; transition: background 0.3s; }
 button:hover { background: #0056b3; }
 .input-container { display: flex; gap: 10px; align-items: center; width: 90%; max-width: 340px; margin-top: 10px; }
-#manualCopyButton, #copyFilteredButton { max-width: 60px; padding: 10px; }
+#manualCopyButton { max-width: 60px; padding: 10px; }
 #deleteListButton { background: #dc3545; }
 #deleteListButton:hover { background: #a71d2a; }
 #copyButton { font-size: 20px; padding: 18px; width: 95%; max-width: 380px; margin-top: 30px; background: #28a745; }
@@ -21,21 +21,15 @@ button:hover { background: #0056b3; }
 </head>
 <body>
 
-<h3>📨 Quản lý danh sách Email Online</h3>
+<h3>📨 Quản lý danh sách Email Online (Tự Lọc & Lưu)</h3>
 
-<textarea id="emailListInput" placeholder="Dán email, text rác, phân cách bất kỳ..."></textarea>
+<textarea id="emailListInput" placeholder="Dán email, text rác, phân cách bất kỳ (| ; , space ...)"></textarea>
 <button id="addListButton">➕ Thêm Email Vào Danh Sách</button>
 <button id="deleteListButton">🗑️ Xóa Danh Sách Email</button>
 
 <div class="input-container">
 <input type="text" id="emailOutput" placeholder="Email sẽ xuất hiện ở đây" readonly>
 <button id="manualCopyButton">📋</button>
-</div>
-
-<!-- ✅ Giao diện giống copy thủ công + nút copy -->
-<div class="input-container">
-<input type="text" id="filteredEmailsOutput" placeholder="Mật khẩu sẽ hiển thị ở đây..." readonly>
-<button id="copyFilteredButton">📋</button>
 </div>
 
 <p id="count"></p>
@@ -59,9 +53,9 @@ const db = firebase.database();
 const emailRef = db.ref('emails');
 let emailList = [];
 
-// Lọc email hợp lệ
+// ✅ Hàm tách email chuẩn, loại bỏ rác, phân cách bất kỳ
 function extractEmails(text) {
-    const separators = /[\s,;|]+/;
+    const separators = /[\s,;|]+/; // tách theo space, , ; |
     const parts = text.split(separators);
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     const emailSet = new Set();
@@ -74,12 +68,11 @@ function extractEmails(text) {
     return Array.from(emailSet);
 }
 
-// Cập nhật số lượng
 function updateCount() {
     document.getElementById('count').textContent = `📊 Số email còn lại: ${emailList.length}`;
 }
 
-// Copy ổn định
+// Copy ổn định trên mọi trình duyệt
 function copyText(text) {
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text).then(() => {
@@ -104,21 +97,17 @@ function fallbackCopy(text) {
     document.body.removeChild(textarea);
 }
 
-// Load danh sách
+// Load danh sách mail
 emailRef.on('value', snapshot => {
     const data = snapshot.val();
     emailList = data ? data : [];
     updateCount();
 });
 
-// Thêm email
+// ✅ Thêm danh sách mail tự động lọc khi bấm thêm
 document.getElementById('addListButton').addEventListener('click', () => {
     const input = document.getElementById('emailListInput').value.trim();
     const filteredEmails = extractEmails(input);
-
-    // Hiển thị chuỗi email đã tách vào input dạng 1 dòng, phân cách bằng dấu phẩy
-    document.getElementById('filteredEmailsOutput').value = filteredEmails.join(", ");
-
     if (filteredEmails.length === 0) {
         document.getElementById('output').textContent = '⚠️ Không có email hợp lệ để thêm.';
         return;
@@ -138,7 +127,7 @@ document.getElementById('addListButton').addEventListener('click', () => {
             document.getElementById('output').textContent = '⚠️ Không thể thêm email.';
         } else {
             const updatedList = snapshot.val() ? snapshot.val() : [];
-            document.getElementById('output').textContent = `✅ Đã thêm ${filteredEmails.length} email, tổng: ${updatedList.length}.`;
+            document.getElementById('output').textContent = `✅ Đã thêm ${filteredEmails.length} email hợp lệ, tổng: ${updatedList.length}.`;
             document.getElementById('emailListInput').value = '';
             emailList = updatedList;
             updateCount();
@@ -146,21 +135,21 @@ document.getElementById('addListButton').addEventListener('click', () => {
     });
 });
 
-// Xóa danh sách
+// Xóa toàn bộ danh sách
 document.getElementById('deleteListButton').addEventListener('click', () => {
-    if (!confirm("Bạn chắc chắn muốn xóa toàn bộ danh sách?")) return;
-    emailRef.set([], error => {
+    if (!confirm("Bạn có chắc muốn xóa toàn bộ danh sách email?")) return;
+    emailRef.set([], (error) => {
         if (error) {
             document.getElementById('output').textContent = '⚠️ Lỗi khi xóa danh sách.';
         } else {
-            document.getElementById('output').textContent = '✅ Đã xóa toàn bộ danh sách.';
+            document.getElementById('output').textContent = '✅ Đã xóa toàn bộ danh sách email.';
             emailList = [];
             updateCount();
         }
     });
 });
 
-// Copy thủ công email random đã xuất hiện
+// Copy thủ công
 document.getElementById('manualCopyButton').addEventListener('click', () => {
     const email = document.getElementById('emailOutput').value;
     if (!email) {
@@ -170,17 +159,7 @@ document.getElementById('manualCopyButton').addEventListener('click', () => {
     copyText(email);
 });
 
-// Copy thủ công chuỗi email đã tách
-document.getElementById('copyFilteredButton').addEventListener('click', () => {
-    const text = document.getElementById('filteredEmailsOutput').value;
-    if (!text) {
-        document.getElementById('output').textContent = '⚠️ Không có chuỗi để copy.';
-        return;
-    }
-    copyText(text);
-});
-
-// Lấy & copy 1 email + xóa
+// Lấy & Copy 1 email + xóa
 document.getElementById('copyButton').addEventListener('click', () => {
     if (emailList.length === 0) {
         document.getElementById('output').textContent = '✅ Danh sách đã hết email.';
