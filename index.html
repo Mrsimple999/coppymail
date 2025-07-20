@@ -7,7 +7,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <style>
-body { font-family: sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+body { font-family: sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; transition: background 0.4s; }
 textarea, input, button { font-size: 16px; width: 90%; max-width: 340px; margin-top: 10px; padding: 12px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
 button { background: #007bff; color: white; border: none; cursor: pointer; transition: background 0.3s; }
 button:hover { background: #0056b3; }
@@ -53,9 +53,9 @@ const db = firebase.database();
 const emailRef = db.ref('emails');
 let emailList = [];
 
-// ✅ Hàm tách email chuẩn, loại bỏ rác, phân cách bất kỳ
+// ✅ Hàm tách email chuẩn
 function extractEmails(text) {
-    const separators = /[\s,;|]+/; // tách theo space, , ; |
+    const separators = /[\s,;|]+/;
     const parts = text.split(separators);
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     const emailSet = new Set();
@@ -97,14 +97,14 @@ function fallbackCopy(text) {
     document.body.removeChild(textarea);
 }
 
-// Load danh sách mail
+// Load danh sách mail realtime
 emailRef.on('value', snapshot => {
     const data = snapshot.val();
     emailList = data ? data : [];
     updateCount();
 });
 
-// ✅ Thêm danh sách mail tự động lọc khi bấm thêm
+// Thêm danh sách mail đã lọc
 document.getElementById('addListButton').addEventListener('click', () => {
     const input = document.getElementById('emailListInput').value.trim();
     const filteredEmails = extractEmails(input);
@@ -159,18 +159,31 @@ document.getElementById('manualCopyButton').addEventListener('click', () => {
     copyText(email);
 });
 
-// Lấy & Copy 1 email + xóa
+// Lấy & Copy 1 email + xóa với đổi nền
 document.getElementById('copyButton').addEventListener('click', () => {
+    const copyButton = document.getElementById('copyButton');
+    copyButton.disabled = true;
+    copyButton.textContent = "⏳ Đang xử lý...";
+    document.body.style.background = "#17a2b8"; // ✅ đổi nền xanh da trời
+
     if (emailList.length === 0) {
         document.getElementById('output').textContent = '✅ Danh sách đã hết email.';
+        copyButton.disabled = false;
+        copyButton.textContent = "📋 Lấy & Copy Email";
+        document.body.style.background = "#f0f2f5"; // ✅ trả lại nền
         return;
     }
+
     const randomIndex = Math.floor(Math.random() * emailList.length);
     const email = emailList[randomIndex];
     copyText(email);
+
     emailRef.transaction(currentList => {
         if (!currentList) return null;
-        currentList.splice(randomIndex, 1);
+        const idx = currentList.indexOf(email);
+        if (idx !== -1) {
+            currentList.splice(idx, 1);
+        }
         return currentList;
     }, (error, committed, snapshot) => {
         if (error) {
@@ -180,6 +193,9 @@ document.getElementById('copyButton').addEventListener('click', () => {
             emailList = snapshot.val() || [];
             updateCount();
         }
+        copyButton.disabled = false;
+        copyButton.textContent = "📋 Lấy & Copy Email";
+        document.body.style.background = "#f0f2f5"; // ✅ trả lại nền
     });
 });
 </script>
