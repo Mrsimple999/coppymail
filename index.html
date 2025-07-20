@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quản lý Email Online - Tự Động Lọc</title>
+<title>Quản lý Email Online - Auto Filter</title>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <style>
@@ -21,9 +21,9 @@ button:hover { background: #0056b3; }
 </head>
 <body>
 
-<h3>📨 Quản lý danh sách Email Online (Tự Động Lọc)</h3>
+<h3>📨 Quản lý danh sách Email Online (Tự Lọc & Lưu)</h3>
 
-<textarea id="emailListInput" placeholder="Dán email cần thêm, mỗi email 1 dòng hoặc hỗn hợp..."></textarea>
+<textarea id="emailListInput" placeholder="Dán email, text rác, phân cách bất kỳ (| ; , space ...)"></textarea>
 <button id="addListButton">➕ Thêm Email Vào Danh Sách</button>
 <button id="deleteListButton">🗑️ Xóa Danh Sách Email</button>
 
@@ -53,12 +53,19 @@ const db = firebase.database();
 const emailRef = db.ref('emails');
 let emailList = [];
 
-// Lọc email hợp lệ
+// ✅ Hàm tách email chuẩn, loại bỏ rác, phân cách bất kỳ
 function extractEmails(text) {
-    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-    const matches = text.match(emailRegex);
-    if (!matches) return [];
-    return Array.from(new Set(matches.map(e => e.toLowerCase())));
+    const separators = /[\s,;|]+/; // tách theo space, , ; |
+    const parts = text.split(separators);
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const emailSet = new Set();
+    parts.forEach(item => {
+        const cleaned = item.trim();
+        if (emailRegex.test(cleaned)) {
+            emailSet.add(cleaned.toLowerCase());
+        }
+    });
+    return Array.from(emailSet);
 }
 
 function updateCount() {
@@ -97,7 +104,7 @@ emailRef.on('value', snapshot => {
     updateCount();
 });
 
-// Thêm danh sách mail (tự động lọc)
+// ✅ Thêm danh sách mail tự động lọc khi bấm thêm
 document.getElementById('addListButton').addEventListener('click', () => {
     const input = document.getElementById('emailListInput').value.trim();
     const filteredEmails = extractEmails(input);
@@ -120,7 +127,7 @@ document.getElementById('addListButton').addEventListener('click', () => {
             document.getElementById('output').textContent = '⚠️ Không thể thêm email.';
         } else {
             const updatedList = snapshot.val() ? snapshot.val() : [];
-            document.getElementById('output').textContent = `✅ Đã thêm ${filteredEmails.length} email hợp lệ, tổng cộng: ${updatedList.length}.`;
+            document.getElementById('output').textContent = `✅ Đã thêm ${filteredEmails.length} email hợp lệ, tổng: ${updatedList.length}.`;
             document.getElementById('emailListInput').value = '';
             emailList = updatedList;
             updateCount();
