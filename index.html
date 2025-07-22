@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quản lý Email Online - Chống Trùng & Chống Spam</title>
+<title>Quản lý Email Online - Auto Filter</title>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <style>
@@ -20,98 +20,182 @@ button:hover { background: #0056b3; }
 </style>
 </head>
 <body>
-<h3>📨 Quản lý danh sách Email Online (Chống Trùng & Cảnh Báo Telegram)</h3>
-<textarea id="emailListInput" placeholder="Dán email, text rác, phân cách bất kỳ"></textarea>
+
+<h3>📨 Quản lý danh sách Email Online (Tự Lọc & Lưu)</h3>
+
+<textarea id="emailListInput" placeholder="Dán email, text rác, phân cách bất kỳ (| ; , space ...)"></textarea>
 <button id="addListButton">➕ Thêm Email Vào Danh Sách</button>
 <button id="deleteListButton">🗑️ Xóa Danh Sách Email</button>
+
 <div class="input-container">
 <input type="text" id="emailOutput" placeholder="Email sẽ xuất hiện ở đây" readonly>
 <button id="manualCopyButton">📋</button>
 </div>
+
 <p id="count"></p>
 <p id="output"></p>
+
 <button id="copyButton">📋 Lấy & Copy Email</button>
+
 <script>
-const firebaseConfig = { /* cấu hình firebase của bạn */ };
+// === Firebase Config ===
+const firebaseConfig = {
+  apiKey: "AIzaSyB9elXt44pt-DGYygIOWQog8XE-YqQO_I8",
+  authDomain: "email-sync-tool.firebaseapp.com",
+  databaseURL: "https://email-sync-tool-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "email-sync-tool",
+  storageBucket: "email-sync-tool.appspot.com",
+  messagingSenderId: "902586987378",
+  appId: "1:902586987378:web:b151f5d50773490816e3eb"
+};
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const emailRef = db.ref('emails');
-const alertsRef = db.ref('alerts');
-const telegramBotToken = "YOUR_BOT_TOKEN";
-const chatId = "YOUR_CHAT_ID";
-const alertThreshold = 10;
-function sendTelegramAlert(message) {
-    const url = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
-    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, text: message }) });
-}
+let emailList = [];
+
+// ✅ Hàm tách email chuẩn
 function extractEmails(text) {
-    const parts = text.split(/[\s,;|]+/);
+    const separators = /[\s,;|]+/;
+    const parts = text.split(separators);
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    const set = new Set();
-    parts.forEach(item => { if (emailRegex.test(item.trim())) set.add(item.trim().toLowerCase()); });
-    return Array.from(set);
-}
-function updateCount(list) {
-    document.getElementById('count').textContent = `📊 Số email còn lại: ${list.length}`;
-}
-function copyText(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        document.getElementById('output').textContent = `✅ Đã copy: ${text}`;
+    const emailSet = new Set();
+    parts.forEach(item => {
+        const cleaned = item.trim();
+        if (emailRegex.test(cleaned)) {
+            emailSet.add(cleaned.toLowerCase());
+        }
     });
+    return Array.from(emailSet);
 }
+
+function updateCount() {
+    document.getElementById('count').textContent = `📊 Số email còn lại: ${emailList.length}`;
+}
+
+// Copy ổn định trên mọi trình duyệt
+function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+            document.getElementById('output').textContent = `✅ Đã copy: ${text}`;
+        }).catch(() => fallbackCopy(text));
+    } else fallbackCopy(text);
+}
+function fallbackCopy(text) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+        const successful = document.execCommand('copy');
+        document.getElementById('output').textContent = successful ? `✅ Đã copy: ${text}` : '⚠️ Không thể copy.';
+    } catch {
+        document.getElementById('output').textContent = '⚠️ Lỗi khi copy.';
+    }
+    document.body.removeChild(textarea);
+}
+
+// Load danh sách mail realtime
 emailRef.on('value', snapshot => {
-    const data = snapshot.val() || [];
-    updateCount(data);
+    const data = snapshot.val();
+    emailList = data ? data : [];
+    updateCount();
 });
+
+// Thêm danh sách mail đã lọc
 document.getElementById('addListButton').addEventListener('click', () => {
     const input = document.getElementById('emailListInput').value.trim();
-    const filtered = extractEmails(input);
-    if (filtered.length === 0) return alert('Không có email hợp lệ');
-    emailRef.transaction(current => {
-        const updated = current ? current.slice() : [];
-        filtered.forEach(email => { if (!updated.includes(email)) updated.push(email); });
-        return updated;
-    }, () => {
-        alertsRef.child('low_mail_alert_sent').set(false);
-        document.getElementById('emailListInput').value = '';
+    const filteredEmails = extractEmails(input);
+    if (filteredEmails.length === 0) {
+        document.getElementById('output').textContent = '⚠️ Không có email hợp lệ để thêm.';
+        return;
+    }
+    emailRef.transaction(currentList => {
+        const updatedList = currentList ? currentList.slice() : [];
+        filteredEmails.forEach(email => {
+            if (!updatedList.includes(email)) {
+                updatedList.push(email);
+            }
+        });
+        return updatedList;
+    }, (error, committed, snapshot) => {
+        if (error) {
+            document.getElementById('output').textContent = '⚠️ Lỗi khi thêm email.';
+        } else if (!committed) {
+            document.getElementById('output').textContent = '⚠️ Không thể thêm email.';
+        } else {
+            const updatedList = snapshot.val() ? snapshot.val() : [];
+            document.getElementById('output').textContent = `✅ Đã thêm ${filteredEmails.length} email hợp lệ, tổng: ${updatedList.length}.`;
+            document.getElementById('emailListInput').value = '';
+            emailList = updatedList;
+            updateCount();
+        }
     });
 });
+
+// Xóa toàn bộ danh sách
 document.getElementById('deleteListButton').addEventListener('click', () => {
-    if (confirm('Bạn chắc chắn xóa?')) {
-        emailRef.set([]);
-        alertsRef.child('low_mail_alert_sent').set(false);
-    }
+    if (!confirm("Bạn có chắc muốn xóa toàn bộ danh sách email?")) return;
+    emailRef.set([], (error) => {
+        if (error) {
+            document.getElementById('output').textContent = '⚠️ Lỗi khi xóa danh sách.';
+        } else {
+            document.getElementById('output').textContent = '✅ Đã xóa toàn bộ danh sách email.';
+            emailList = [];
+            updateCount();
+        }
+    });
 });
+
+// Copy thủ công
 document.getElementById('manualCopyButton').addEventListener('click', () => {
     const email = document.getElementById('emailOutput').value;
-    if (email) copyText(email);
+    if (!email) {
+        document.getElementById('output').textContent = '⚠️ Không có email để copy.';
+        return;
+    }
+    copyText(email);
 });
+
+// Lấy & Copy 1 email + xóa với đổi nền
 document.getElementById('copyButton').addEventListener('click', () => {
-    const btn = document.getElementById('copyButton');
-    btn.disabled = true; btn.textContent = '⏳ Đang xử lý...';
-    document.body.style.background = '#17a2b8';
-    emailRef.transaction(current => {
-        if (current && current.length > 0) {
-            const email = current[0];
-            current.splice(0, 1);
+    const copyButton = document.getElementById('copyButton');
+    copyButton.disabled = true;
+    copyButton.textContent = "⏳ Đang xử lý...";
+    document.body.style.background = "#17a2b8"; // ✅ đổi nền xanh da trời
+
+    if (emailList.length === 0) {
+        document.getElementById('output').textContent = '✅ Danh sách đã hết email.';
+        copyButton.disabled = false;
+        copyButton.textContent = "📋 Lấy & Copy Email";
+        document.body.style.background = "#f0f2f5"; // ✅ trả lại nền
+        return;
+    }
+
+    const randomIndex = Math.floor(Math.random() * emailList.length);
+    const email = emailList[randomIndex];
+    copyText(email);
+
+    emailRef.transaction(currentList => {
+        if (!currentList) return null;
+        const idx = currentList.indexOf(email);
+        if (idx !== -1) {
+            currentList.splice(idx, 1);
+        }
+        return currentList;
+    }, (error, committed, snapshot) => {
+        if (error) {
+            document.getElementById('output').textContent = '⚠️ Lỗi khi xóa email.';
+        } else if (committed) {
             document.getElementById('emailOutput').value = email;
-            copyText(email);
-            return current;
+            emailList = snapshot.val() || [];
+            updateCount();
         }
-        return current;
-    }, (err, committed, snap) => {
-        const remaining = snap.val() || [];
-        updateCount(remaining);
-        if (remaining.length <= alertThreshold) {
-            alertsRef.child('low_mail_alert_sent').once('value').then(snap => {
-                if (!snap.val()) {
-                    sendTelegramAlert(`⚠️ Cảnh báo: Số email còn lại dưới ${alertThreshold}.`);
-                    alertsRef.child('low_mail_alert_sent').set(true);
-                }
-            });
-        }
-        btn.disabled = false; btn.textContent = '📋 Lấy & Copy Email';
-        document.body.style.background = '#f0f2f5';
+        copyButton.disabled = false;
+        copyButton.textContent = "📋 Lấy & Copy Email";
+        document.body.style.background = "#f0f2f5"; // ✅ trả lại nền
     });
 });
 </script>
