@@ -88,7 +88,7 @@ function extractEmails(text) {
 function updateCount() {
   document.getElementById('count').textContent = `📊 Số email còn lại: ${emailList.length}`;
 
-  if (emailList.length <= 5 && !telegramAlertSent) {
+  if (emailList.length <= 15 && !telegramAlertSent) {
     const time = new Date().toLocaleString("vi-VN");
     sendTelegramMessage(`⚠️ Cảnh báo: Danh sách email sắp hết!\nHiện còn ${emailList.length} email.\n🕒 Thời gian: ${time}`);
     telegramAlertSent = true;
