@@ -368,6 +368,25 @@ document.getElementById('clearLogsButton').addEventListener('click', () => {
     }
   });
 });
+const TELEGRAM_TOKEN = "8059063840:AAFUTs7wn_tR9xlFEvnjJHW7K6bhcnmwh4U";
+const TELEGRAM_CHAT_ID = "6976397277";
+
+function sendTelegramAlert(message) {
+  fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message })
+  });
+}
+
+function updateCount() {
+  document.getElementById('count').textContent = `📊 Số email còn lại: ${emailList.length}`;
+
+  if (emailList.length === 15 && !localStorage.getItem('hasSentTelegramAlert')) {
+    sendTelegramAlert(`⚠️ Danh sách email còn lại: ${emailList.length}. Hãy chuẩn bị thêm mới.`);
+    localStorage.setItem('hasSentTelegramAlert', 'true');
+  }
+}
 </script>
 </body>
 </html>
