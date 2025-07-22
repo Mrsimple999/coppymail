@@ -110,7 +110,7 @@ function updateCount() {
     document.getElementById('count').textContent = `📊 Số email còn lại: ${emailList.length}`;
     
     // Kiểm tra nếu số email còn lại dưới ngưỡng cảnh báo
-    const alertThreshold = 10;  // Ngưỡng cảnh báo, thay đổi theo nhu cầu
+    const alertThreshold = 15;  // Ngưỡng cảnh báo, thay đổi theo nhu cầu
     if (emailList.length <= alertThreshold && !alertSent) {
         const message = `⚠️ Cảnh báo: Số email trong danh sách còn lại ít hơn ${alertThreshold}. Cần thêm email mới!`;
         sendTelegramAlert(message);
