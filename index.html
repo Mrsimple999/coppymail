@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quản lý Email Online</title>
+<title>Quản lý Email Online - Lọc Email Chuẩn</title>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <style>
@@ -21,10 +21,10 @@ button:hover { background: #0056b3; }
 </head>
 <body>
 
-<h3>📨 Quản lý danh sách Email Online</h3>
+<h3>📨 Quản lý danh sách Email Online (Lọc & Lưu)</h3>
 
-<textarea id="emailListInput" placeholder="Dán email cần thêm, mỗi email 1 dòng hoặc phân cách bằng dấu , ; | space..."></textarea>
-<button id="addListButton">➕ Thêm Email Vào Danh Sách</button>
+<textarea id="emailListInput" placeholder="Dán text chứa email cần lọc, phân cách bất kỳ..."></textarea>
+<button id="addListButton">➕ Thêm Email Đã Lọc Vào Danh Sách</button>
 <button id="deleteListButton">🗑️ Xóa Danh Sách Email</button>
 
 <div class="input-container">
@@ -53,16 +53,16 @@ const db = firebase.database();
 const emailRef = db.ref('emails');
 let emailList = [];
 
-// ✅ Hàm lọc & tách định dạng email chuẩn
+// ✅ Hàm lọc & tách email hợp lệ
 function extractEmails(text) {
-    const separators = /[\s,;|]+/; // phân cách bởi space, dấu phẩy, chấm phẩy, |
+    const separators = /[\s,;|]+/;
     const parts = text.split(separators);
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     const emailSet = new Set();
     parts.forEach(item => {
-        const cleaned = item.trim();
+        const cleaned = item.trim().toLowerCase();
         if (emailRegex.test(cleaned)) {
-            emailSet.add(cleaned.toLowerCase());
+            emailSet.add(cleaned);
         }
     });
     return Array.from(emailSet);
@@ -97,41 +97,45 @@ function fallbackCopy(text) {
     document.body.removeChild(textarea);
 }
 
-// Load danh sách mail
+// Load danh sách email
 emailRef.on('value', snapshot => {
     emailList = snapshot.val() || [];
     updateCount();
 });
 
-// Thêm danh sách mail
+// Thêm email đã lọc
 document.getElementById('addListButton').addEventListener('click', () => {
     const input = document.getElementById('emailListInput').value.trim();
     if (!input) {
-        document.getElementById('output').textContent = '⚠️ Vui lòng dán danh sách email.';
+        document.getElementById('output').textContent = '⚠️ Vui lòng dán text chứa email.';
         return;
     }
-    const newEmails = extractEmails(input);
-    if (newEmails.length === 0) {
-        document.getElementById('output').textContent = '⚠️ Không có email hợp lệ.';
+    const filteredEmails = extractEmails(input);
+    if (filteredEmails.length === 0) {
+        document.getElementById('output').textContent = '⚠️ Không tìm thấy email hợp lệ.';
         return;
     }
     emailRef.transaction(currentList => {
         const updatedList = currentList ? currentList.slice() : [];
-        newEmails.forEach(email => {
+        filteredEmails.forEach(email => {
             if (!updatedList.includes(email)) updatedList.push(email);
         });
         return updatedList;
     }, () => {
         document.getElementById('emailListInput').value = '';
         updateCount();
-        document.getElementById('output').textContent = `✅ Đã thêm ${newEmails.length} email hợp lệ.`;
+        document.getElementById('output').textContent = `✅ Đã thêm ${filteredEmails.length} email hợp lệ.`;
     });
 });
 
 // Xóa toàn bộ danh sách
 document.getElementById('deleteListButton').addEventListener('click', () => {
     if (confirm("Bạn có chắc muốn xóa toàn bộ danh sách email?")) {
-        emailRef.set([]);
+        emailRef.set([], () => {
+            emailList = [];
+            updateCount();
+            document.getElementById('output').textContent = '✅ Đã xóa toàn bộ danh sách email.';
+        });
     }
 });
 
@@ -145,9 +149,9 @@ document.getElementById('manualCopyButton').addEventListener('click', () => {
     copyText(email);
 });
 
-// Lấy & Copy 1 email + xóa
+// Lấy & Copy 1 email, xóa, giữ nền xanh
 document.getElementById('copyButton').addEventListener('click', () => {
-    document.body.style.background = "#17a2b8"; // giữ nền xanh dương
+    document.body.style.background = "#17a2b8"; // giữ nền xanh khi lấy
     if (emailList.length === 0) {
         document.getElementById('output').textContent = '✅ Danh sách đã hết email.';
         return;
