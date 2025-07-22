@@ -53,6 +53,38 @@ const db = firebase.database();
 const emailRef = db.ref('emails');
 let emailList = [];
 
+// === Telegram Bot Configuration ===
+const telegramBotToken = "8059063840:AAFUTs7wn_tR9xlFEvnjJHW7K6bhcnmwh4U";  // Token Bot của bạn
+const chatId = "6976397277";  // Chat ID của bạn
+
+// Hàm gửi cảnh báo qua Telegram
+function sendTelegramAlert(message) {
+    const url = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+    const payload = {
+        chat_id: chatId,
+        text: message
+    };
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.ok) {
+            console.log("Cảnh báo đã được gửi qua Telegram!");
+        } else {
+            console.error("Lỗi khi gửi cảnh báo qua Telegram:", data);
+        }
+    })
+    .catch(error => {
+        console.error("Lỗi khi gửi yêu cầu Telegram:", error);
+    });
+}
+
 // ✅ Hàm tách email chuẩn
 function extractEmails(text) {
     const separators = /[\s,;|]+/;
@@ -70,6 +102,13 @@ function extractEmails(text) {
 
 function updateCount() {
     document.getElementById('count').textContent = `📊 Số email còn lại: ${emailList.length}`;
+    
+    // Kiểm tra nếu số email còn lại dưới ngưỡng cảnh báo
+    const alertThreshold = 15;  // Ngưỡng cảnh báo, thay đổi theo nhu cầu
+    if (emailList.length <= alertThreshold) {
+        const message = `⚠️ Cảnh báo: Số email trong danh sách còn lại ít hơn ${alertThreshold}. Cần thêm email mới!`;
+        sendTelegramAlert(message);
+    }
 }
 
 // Copy ổn định trên mọi trình duyệt
