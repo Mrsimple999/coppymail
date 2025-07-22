@@ -146,3 +146,100 @@ function resetUI() {
 </script>
 </body>
 </html>
+🧪 Cách kiểm thử đa thiết bị:
+Mở file trên 2 tab (hoặc 2 máy khác nhau).
+
+Nhấn Lấy & Copy Email gần như cùng lúc:
+
+Tab nào thực hiện nhanh nhất sẽ lấy email về, xóa mục đó.
+
+Tab còn lại sẽ hiển thị nền vàng + cảnh báo UID.
+
+⚠️ UID không bị lộ ra người dùng, chỉ dùng để phân biệt thiết bị, tự sinh trong localStorage và xóa sau khi xong.
+
+Nếu cần bao gồm Telegram, thống kê, hoặc muốn đóng gói hoàn chỉnh .html, zip, cứ nói nhé!
+
+
+
+Bạn đã nói:
+lấy mail cứ bị đang xử lý
+
+ChatGPT đã nói:
+Bạn bị "Đang xử lý..." mãi vì đoạn code chờ takenRef.set(deviceUID) hoặc transaction xóa email chưa thành công hoặc không gọi resetUI() đúng lúc, hoặc do lỗi bất đồng bộ.
+
+Mình đã rà soát lại và tối ưu lại đoạn copyButton xử lý:
+
+Thêm nhiều catch để bắt lỗi.
+
+Đảm bảo mọi nhánh đều gọi resetUI() trả lại trạng thái button và màu nền.
+
+Thêm console.log để dễ debug.
+
+Bạn thay đoạn xử lý nút "Lấy & Copy Email" trong script bằng đoạn này nhé:
+
+js
+Sao chép
+Chỉnh sửa
+document.getElementById('copyButton').onclick = () => {
+  const btn = document.getElementById('copyButton');
+  btn.disabled = true; 
+  btn.textContent = '⏳ Đang xử lý...';
+  document.body.style.background = '#17a2b8';
+
+  if (!emailList.length) {
+    document.getElementById('msg').textContent = '✅ Danh sách đã hết email.';
+    resetUI();
+    return;
+  }
+
+  const idx = Math.floor(Math.random() * emailList.length);
+  const email = emailList[idx];
+  const node = takenRef.child(encodeURIComponent(email));
+
+  node.once('value').then(snap => {
+    const by = snap.val();
+    if (by && by !== deviceUID) {
+      document.body.style.background = '#ffc107';
+      document.getElementById('msg').textContent = `⚠️ Email đã bị lấy bởi thiết bị khác (UID: ${by})`;
+      resetUI();
+      return Promise.reject('Email đã bị lấy');
+    }
+
+    return node.set(deviceUID).then(() => {
+      copyText(email);
+      return new Promise(resolve => setTimeout(resolve, 500));
+    }).then(() => {
+      return emailsRef.transaction(list => {
+        if (!list) return [];
+        const i = list.indexOf(email);
+        if (i >= 0) list.splice(i, 1);
+        return list;
+      });
+    }).then((result) => {
+      const [error, committed, snap2] = result;
+      if (committed) {
+        emailList = snap2.val() || [];
+        updateCount();
+        document.getElementById('emailOut').value = email;
+        document.getElementById('msg').textContent = `✅ Đã lấy email: ${email}`;
+      }
+      return node.remove();
+    });
+  }).catch(err => {
+    if (err !== 'Email đã bị lấy') {
+      console.error('Lỗi:', err);
+      document.getElementById('msg').textContent = '⚠️ Có lỗi xảy ra khi lấy email.';
+    }
+  }).finally(() => {
+    resetUI();
+  });
+};
+
+function resetUI() {
+  const btn = document.getElementById('copyButton');
+  btn.disabled = false; 
+  btn.textContent = '📋 Lấy & Copy Email';
+  if (document.body.style.background !== 'rgb(255, 193, 7)') {
+    document.body.style.background = '#f0f2f5';
+  }
+}
