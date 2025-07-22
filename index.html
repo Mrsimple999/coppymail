@@ -53,12 +53,9 @@ const db = firebase.database();
 const emailRef = db.ref('emails');
 let emailList = [];
 
-// === Telegram Bot Configuration ===
-const telegramBotToken = "8059063840:AAFUTs7wn_tR9xlFEvnjJHW7K6bhcnmwh4U";  // Token Bot của bạn
-const chatId = "6976397277";  // Chat ID của bạn
-
 // Kiểm tra trạng thái cảnh báo đã gửi hay chưa từ localStorage
 let alertSent = localStorage.getItem("alertSent") === "true";
+const alertThreshold = 15;  // Giá trị cảnh báo cố định là 15
 
 // Hàm gửi cảnh báo qua Telegram
 function sendTelegramAlert(message) {
@@ -108,16 +105,15 @@ function extractEmails(text) {
 
 function updateCount() {
     document.getElementById('count').textContent = `📊 Số email còn lại: ${emailList.length}`;
-    
-    // Kiểm tra nếu số email còn lại dưới ngưỡng cảnh báo
-    const alertThreshold = 15;  // Ngưỡng cảnh báo, thay đổi theo nhu cầu
-    if (emailList.length <= alertThreshold && !alertSent) {
-        const message = `⚠️ Cảnh báo: Số email trong danh sách còn lại ít hơn ${alertThreshold}. Cần thêm email mới!`;
+
+    // Chỉ gửi cảnh báo khi số email bằng giá trị cố định (alertThreshold)
+    if (emailList.length === alertThreshold && !alertSent) {
+        const message = `⚠️ Cảnh báo: Số email trong danh sách hiện tại là ${alertThreshold}. Cần thêm email mới!`;
         sendTelegramAlert(message);
     }
 
-    // Nếu số lượng email vượt qua ngưỡng cảnh báo, reset lại trạng thái gửi cảnh báo
-    if (emailList.length > alertThreshold) {
+    // Nếu số lượng email không bằng ngưỡng, reset lại trạng thái gửi cảnh báo
+    if (emailList.length !== alertThreshold) {
         alertSent = false;
         localStorage.removeItem("alertSent"); // Xóa trạng thái cảnh báo khỏi localStorage
     }
@@ -185,45 +181,42 @@ document.getElementById('manualCopyButton').addEventListener('click', () => {
     copyText(email);
 });
 
-// Lấy & Copy 1 email + xóa với đổi nền
-document.getElementById('copyButton').addEventListener('click', () => {
-    const copyButton = document.getElementById('copyButton');
-    copyButton.disabled = true;
-    copyButton.textContent = "⏳ Đang xử lý...";
-    document.body.style.background = "#17a2b8"; // ✅ đổi nền xanh da trời
+// Copy ổn định trên mọi trình duyệt
+function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+            document.getElementById('output').textContent = `✅ Đã copy: ${text}`;
+        }).catch(() => fallbackCopy(text));
+    } else fallbackCopy(text);
+}
 
-    if (emailList.length === 0) {
-        document.getElementById('output').textContent = '✅ Danh sách đã hết email.';
-        copyButton.disabled = false;
-        copyButton.textContent = "📋 Lấy & Copy Email";
-        document.body.style.background = "#f0f2f5"; // ✅ trả lại nền
-        return;
+function fallbackCopy(text) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+        const successful = document.execCommand('copy');
+        document.getElementById('output').textContent = successful ? `✅ Đã copy: ${text}` : '⚠️ Không thể copy';
+    } catch (err) {
+        document.getElementById('output').textContent = '⚠️ Không thể copy';
     }
+    document.body.removeChild(textarea);
+}
 
-    const randomIndex = Math.floor(Math.random() * emailList.length);
-    const email = emailList[randomIndex];
-    copyText(email);
-
-    emailRef.transaction(currentList => {
-        if (!currentList) return null;
-        const idx = currentList.indexOf(email);
-        if (idx !== -1) {
-            currentList.splice(idx, 1);
-        }
-        return currentList;
-    }, (error, committed, snapshot) => {
-        if (error) {
-            document.getElementById('output').textContent = '⚠️ Lỗi khi xóa email.';
-        } else if (committed) {
-            document.getElementById('emailOutput').value = email;
-            emailList = snapshot.val() || [];
-            updateCount();
-        }
-        copyButton.disabled = false;
-        copyButton.textContent = "📋 Lấy & Copy Email";
-        document.body.style.background = "#f0f2f5"; // ✅ trả lại nền
-    });
+// Lấy email và copy
+document.getElementById('copyButton').addEventListener('click', () => {
+    if (emailList.length > 0) {
+        const emails = emailList.join("\n");
+        copyText(emails);
+    } else {
+        document.getElementById('output').textContent = '⚠️ Không có email nào trong danh sách!';
+    }
 });
 </script>
+
 </body>
 </html>
