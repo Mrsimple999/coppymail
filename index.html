@@ -57,8 +57,8 @@ let emailList = [];
 const telegramBotToken = "8059063840:AAFUTs7wn_tR9xlFEvnjJHW7K6bhcnmwh4U";  // Token Bot của bạn
 const chatId = "6976397277";  // Chat ID của bạn
 
-// Biến flag để kiểm tra xem cảnh báo đã được gửi chưa
-let alertSent = false;
+// Kiểm tra trạng thái cảnh báo đã gửi hay chưa từ localStorage
+let alertSent = localStorage.getItem("alertSent") === "true";
 
 // Hàm gửi cảnh báo qua Telegram
 function sendTelegramAlert(message) {
@@ -80,6 +80,8 @@ function sendTelegramAlert(message) {
         if (data.ok) {
             console.log("Cảnh báo đã được gửi qua Telegram!");
             alertSent = true;  // Đánh dấu đã gửi cảnh báo
+            // Lưu trạng thái gửi cảnh báo vào localStorage
+            localStorage.setItem("alertSent", "true");
         } else {
             console.error("Lỗi khi gửi cảnh báo qua Telegram:", data);
         }
@@ -117,32 +119,8 @@ function updateCount() {
     // Nếu số lượng email vượt qua ngưỡng cảnh báo, reset lại trạng thái gửi cảnh báo
     if (emailList.length > alertThreshold) {
         alertSent = false;
+        localStorage.removeItem("alertSent"); // Xóa trạng thái cảnh báo khỏi localStorage
     }
-}
-
-// Copy ổn định trên mọi trình duyệt
-function copyText(text) {
-    if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text).then(() => {
-            document.getElementById('output').textContent = `✅ Đã copy: ${text}`;
-        }).catch(() => fallbackCopy(text));
-    } else fallbackCopy(text);
-}
-function fallbackCopy(text) {
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.style.position = "fixed";
-    textarea.style.left = "-9999px";
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-    try {
-        const successful = document.execCommand('copy');
-        document.getElementById('output').textContent = successful ? `✅ Đã copy: ${text}` : '⚠️ Không thể copy.';
-    } catch {
-        document.getElementById('output').textContent = '⚠️ Lỗi khi copy.';
-    }
-    document.body.removeChild(textarea);
 }
 
 // Load danh sách mail realtime
